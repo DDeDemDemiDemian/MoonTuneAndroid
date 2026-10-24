@@ -3,7 +3,8 @@ name: Build MoonTune APK
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -12,22 +13,29 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
       - name: Install Android SDK
         run: |
           SDKMANAGER="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools" -type f -name sdkmanager | head -n 1)"
-          test -n "$SDKMANAGER"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "ERROR: Android SDK manager was not found."
+            exit 1
+          fi
           yes | "$SDKMANAGER" --licenses
           "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
 
@@ -36,16 +44,22 @@ jobs:
           unzip -q MoonTune_Source_Files.zip -d extracted
           test -f extracted/MoonTuneAndroid/app/build.gradle.kts
 
-      - name: Fix fpcalc dependency coordinate
+      - name: Update fpcalc dependency
         run: |
-          sed -i 's/com\.github\.QuickLyric:fpcalc-android/com.github.quicklyric:fpcalc-android/g' extracted/MoonTuneAndroid/app/build.gradle.kts
-          grep -n 'fpcalc-android' extracted/MoonTuneAndroid/app/build.gradle.kts
+          FILE="extracted/MoonTuneAndroid/app/build.gradle.kts"
+          sed -i 's/com\.github\.QuickLyric:fpcalc-android:1\.0\.1/com.github.QuickLyric:fpcalc-android:master-SNAPSHOT/g' "$FILE"
+          sed -i 's/com\.github\.quicklyric:fpcalc-android:1\.0\.1/com.github.QuickLyric:fpcalc-android:master-SNAPSHOT/g' "$FILE"
+          grep -n 'fpcalc-android' "$FILE"
 
-      - name: Build APK
+      - name: Build debug APK
         working-directory: extracted/MoonTuneAndroid
-        run: gradle assembleDebug
+        run: gradle assembleDebug --stacktrace
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
         with:
-          name: moontune-debug-apk
+          name: MoonTune-debug-APK
           path: extracted/MoonTuneAndroid/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
