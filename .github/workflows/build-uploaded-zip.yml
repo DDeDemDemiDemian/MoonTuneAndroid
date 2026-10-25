@@ -1,4 +1,3 @@
-
 name: Build MoonTune APK
 
 on:
@@ -43,13 +42,7 @@ jobs:
         run: |
           unzip -q MoonTune_Source_Files.zip -d extracted
           test -f extracted/MoonTuneAndroid/app/build.gradle.kts
-
-      - name: Update fpcalc dependency
-        run: |
-          FILE="extracted/MoonTuneAndroid/app/build.gradle.kts"
-          sed -i 's/com\.github\.QuickLyric:fpcalc-android:1\.0\.1/com.github.QuickLyric:fpcalc-android:master-SNAPSHOT/g' "$FILE"
-          sed -i 's/com\.github\.quicklyric:fpcalc-android:1\.0\.1/com.github.QuickLyric:fpcalc-android:master-SNAPSHOT/g' "$FILE"
-          grep -n 'fpcalc-android' "$FILE"
+          grep -n 'fpcalc-android' extracted/MoonTuneAndroid/app/build.gradle.kts
 
       - name: Build debug APK
         working-directory: extracted/MoonTuneAndroid
